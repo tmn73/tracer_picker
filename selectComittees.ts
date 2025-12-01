@@ -204,12 +204,11 @@ export const selectCommittees = async (
       (filteredCommitteeCounts[committee as CommitteeCode] || 0) + count;
   });
 
-  const historyData = JSON.parse(
-    fs.readFileSync(
-      path.join(__dirname, "results", "results_history.json"),
-      "utf8"
-    )
+  const historyFileContent = fs.readFileSync(
+    path.join(__dirname, "results", "results_history.json"),
+    "utf8"
   );
+  const historyData = historyFileContent.trim() ? JSON.parse(historyFileContent) : [];
 
   const results = generateCommitteeResults(
     filteredCommitteeCounts,
