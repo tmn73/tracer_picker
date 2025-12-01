@@ -155,27 +155,38 @@ export const selectCommittees = async (
   comiteCode: CommitteeCode,
   competitionCode: string
 ) => {
-  const metadata = await page.evaluate(() => {
-    const titre =
-      document
-        .querySelector("#container_info_competition h2")
-        ?.textContent?.trim() || "";
-
-    const location = titre.split("(")[1]?.split("-")[0]?.trim() || "";
-    const discipline = titre.split("-")[1]?.slice(0, 2) || "";
-    const dateMatch = titre.match(/du\s+([^,]+)/);
-    const date = dateMatch ? dateMatch[1].trim() : "";
-
-    return {
-      discipline,
-      date,
-      location,
-    };
+  const pageInfo = await page.evaluate(() => {
+    const allH2 = Array.from(document.querySelectorAll("h2")).map(el => el.textContent?.trim());
+    const allH4 = Array.from(document.querySelectorAll("h4")).map(el => el.textContent?.trim());
+    return { titre: allH2[0] || "", sousTitre: allH4[0] || "" };
   });
 
+  const titre = pageInfo.titre;
+  const sousTitre = pageInfo.sousTitre;
+
+  // Extraire la date: "du 29/11/2025"
+  const dateMatch = titre.match(/du\s+(\d{2}\/\d{2}\/\d{4})/);
+  const date = dateMatch ? dateMatch[1] : "";
+
+  // Extraire la discipline: "(-SL)" -> "SL"
+  const disciplineMatch = titre.match(/\(-?([A-Z]+)\)/);
+  const discipline = disciplineMatch ? disciplineMatch[1] : "";
+
+  // Le lieu est dans le h4
+  const location = sousTitre;
+
+  const metadata = { discipline, date, location };
+
   const committeesData = (await page.evaluate(() => {
-    const csCells = document.querySelectorAll("td.text-center:nth-child(8)");
-    return Array.from(csCells).map((cell) => cell.textContent?.trim() || "");
+    // Colonne 8 = CS (comité) dans les lignes du tbody
+    // Structure: delete(1), code(2), nom(3), prénom(4), sexe(5), année(6), club(7), CS(8)
+    const rows = document.querySelectorAll("table tbody tr[data-code_coureur]");
+    return Array.from(rows)
+      .map((row) => {
+        const cells = row.querySelectorAll("td");
+        return cells[7]?.textContent?.trim() || "";
+      })
+      .filter((code) => code !== "");
   })) as CommitteeCode[];
 
   const committeeCounts = countCompetitorsByCommittee(committeesData);

@@ -57,7 +57,7 @@ async function main() {
 
   if (isCancel(competitionCode)) {
     cancel("Opération annulée.");
-    outro("Martin Constructions vous remercie pour votre confiance.");
+    outro("Martin Construction vous remercie pour votre confiance.");
     process.exit(0);
   }
 
@@ -89,12 +89,13 @@ async function main() {
       competitionCode
     );
 
-    const { discipline, date, location, ...results } = await selectCommittees(
+    const fullResults = await selectCommittees(
       page,
       committeeCode,
       competitionCode
     );
-    displayResults(results);
+    const { discipline, date, location, ...results } = fullResults;
+    displayResults(fullResults);
 
     let finalResults = results;
     let isResultOk = false;
@@ -160,7 +161,7 @@ async function main() {
 
     if (isCancel(isResultOk)) {
       cancel("Opération annulée.");
-      outro("Martin Constructions vous remercie pour votre confiance.");
+      outro("Martin Construction vous remercie pour votre confiance.");
       process.exit(0);
     }
 
@@ -174,11 +175,11 @@ async function main() {
     fs.writeFileSync("./results/results.html", html);
     await open("./results/results.html");
 
-    outro("Martin Constructions vous remercie pour votre confiance.");
+    outro("Martin Construction vous remercie pour votre confiance.");
   } catch (error) {
     console.error("Erreur lors du processus :", error);
     log.error("Erreur lors de la recherche de la compétition");
-    outro("Martin Constructions s'excuse pour la gêne occasionnée.");
+    outro("Martin Construction s'excuse pour la gêne occasionnée.");
   } finally {
     await browser.close();
   }

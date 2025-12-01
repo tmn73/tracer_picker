@@ -131,7 +131,7 @@ export const generateHtml = (
         </div>
 
         <div class="timestamp">
-            <p>Martin Constructions - ${new Date().getFullYear()}</p>
+            <p>Martin Construction - ${new Date().getFullYear()}</p>
         </div>
 
         <script>
