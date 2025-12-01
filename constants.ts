@@ -10,7 +10,8 @@ export const COMMITTEE_CODES = {
   MJ: "MJ",
   PE: "PE",
   IF: "IF",
-  AU: 'AU'
+  AU: 'AU',
+  CNE: 'CNE'
 
 };
 
@@ -24,8 +25,8 @@ export const EXTRA_COMMITTEES_COUNT: Partial<Record<CommitteeCode, number>> = {
 export const FILTERED_OUT_COMMITTEES: CommitteeCode[] = ["IF", "AU"]
 
 export const SEASON_DATES = {
-  start: "15/10/2024",
-  end: "30/04/2025",
+  start: "15/10/2025",
+  end: "30/04/2026",
 };
 
 export const ALGO_WEIGHT_KNOBS = {
