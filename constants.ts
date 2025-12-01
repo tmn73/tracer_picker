@@ -1,5 +1,6 @@
 export const COMMITTEE_CODES = {
   EQ: "EQ",
+  CNE:'CNE',
   SA: "SA",
   MB: "MB",
   AP: "AP",
@@ -10,8 +11,7 @@ export const COMMITTEE_CODES = {
   MJ: "MJ",
   PE: "PE",
   IF: "IF",
-  AU: 'AU',
-  CNE: 'CNE'
+  AU: 'AU'
 
 };
 
