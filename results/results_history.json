@@ -1,18 +1,26 @@
 {
-  "29/11/2025_gp_international_njr_sl": {
-    "traceurs": {
-      "manche1": "SA",
-      "manche2": "MB",
-      "manche3": "SA",
-      "manche4": "AP"
-    }
-  },
-  "08/12/2025_ski_chrono_samse_tour_": {
+  "08/12/2025_gs VAL CENIS": {
     "traceurs": {
       "manche1": "SA",
       "manche2": "ORS",
       "manche3": "SA",
       "manche4": "MB"
+    }
+  },
+  "10/12/2025_sl VAL CENIS": {
+    "traceurs": {
+      "manche1": "CNE",
+      "manche2": "EQ",
+      "manche3": "ORS",
+      "manche4": "SA"
+    }
+  },
+  "22/12/2025_sL VALMEINIER_": {
+    "traceurs": {
+      "manche1": "SA",
+      "manche2": "CNE",
+      "manche3": "EQ",
+      "manche4": "DA"
     }
   }
 }

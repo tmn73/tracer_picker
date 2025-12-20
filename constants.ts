@@ -11,6 +11,7 @@ export const COMMITTEE_CODES = {
   MJ: "MJ",
   PE: "PE",
   IF: "IF",
+  CA: "CA",
   AU: 'AU'
 
 };
@@ -19,7 +20,7 @@ export type CommitteeCode = keyof typeof COMMITTEE_CODES;
 
 export const EXTRA_COMMITTEES_COUNT: Partial<Record<CommitteeCode, number>> = {
   APEX: 6,
-  ORS: 20,
+  ORS: 15,
 };
 
 export const FILTERED_OUT_COMMITTEES: CommitteeCode[] = ["IF", "AU"]
