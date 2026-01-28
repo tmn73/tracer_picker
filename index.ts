@@ -46,12 +46,12 @@ async function main() {
   // Get user inputs
   const competitionCode = (await text({
     message: "Quel est le code de la competition ?",
-    placeholder: "0000",
+    placeholder: "00000",
     validate: (value) => {
       if (!value) return "Veuillez entrer un code";
       if (isNaN(Number(value)))
         return "Le code doit contenir uniquement des chiffres";
-      if (value.length !== 4) return "Le code doit contenir 4 chiffres";
+      if (value.length < 4 || value.length > 5) return "Le code doit contenir 4 ou 5 chiffres";
     },
   })) as string;
 
