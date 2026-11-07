@@ -21,18 +21,23 @@ export const login = async (page: Page, email: string, password: string) => {
   try {
     s.start("Connexion...");
     await fillTheLoginForm(page, email, password);
-    // Attendre réellement la navigation post-connexion (et pas seulement un instant sans réseau)
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "networkidle0" }),
-      clickTheValidateButton(page),
-    ]);
+    await clickTheValidateButton(page);
+    // La connexion ne déclenche pas forcément une navigation : on attend que le
+    // formulaire disparaisse (succès). S'il reste après 30 s, la connexion est refusée.
+    await page
+      .waitForFunction(() => !document.querySelector("#form_login"), {
+        timeout: 30000,
+      })
+      .catch(() => {});
+    await page.waitForNetworkIdle().catch(() => {});
+
     // Si le formulaire de connexion est toujours affiché, les identifiants ont été refusés
     const loginFormStillThere = await page.$("#form_login");
     if (loginFormStillThere) {
       const message = await page.evaluate(
         () =>
           document
-            .querySelector(".alert, .invalid-feedback, .text-danger")
+            .querySelector("#form_login .alert, .alert-danger, .invalid-feedback.d-block")
             ?.textContent?.trim() || ""
       );
       throw new Error(
