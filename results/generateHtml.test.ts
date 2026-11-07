@@ -38,12 +38,29 @@ describe("generateHtml", () => {
     expect(page.match(/<p class="why">/g)!.length).toBe(2);
   });
 
-  test("l'explication répond à « pourquoi des % si on tire au sort » avec l'image des billets", () => {
-    const page = html();
-    expect(page).toContain("Pourquoi des pourcentages si c'est un tirage au sort ?");
-    expect(page).toContain("loterie avec des billets");
-    expect(page).toContain("Pourquoi ne pas simplement prendre celui qui a le plus de billets ?");
-    expect(page).toContain("Ici, en manche 2 :"); // exemple tiré du tirage
+  test("l'explication est courte et utilise l'image des billets", () => {
+    const page = generateHtml(
+      {
+        ...generateCommitteeResults(counts, "DA", {}, "10439"),
+        effectifs: {
+          organisateur: { committee: "DA", count: 12 },
+          totalPage: 83,
+          sansComite: 8,
+          exclus: { AU: 1 },
+          retenus: 62,
+          artificiels: { APEX: 6, ORS: 15 },
+          base: 83,
+        },
+      },
+      meta
+    );
+    const howto = page.split('<details class="howto">')[1].split("</details>")[0];
+    expect(howto).toContain("Comment ça marche ?");
+    expect(howto).toContain("billets");
+    expect(howto).toContain("le favori peut perdre");
+    expect(howto).toContain("Base de calcul : 62 coureurs + APEX 6, ORS 15 = 83. Exclus : AU 1.");
+    // courte : moins de 900 caractères de texte
+    expect(howto.replace(/<[^>]+>/g, "").length).toBeLessThan(900);
   });
 
   test("manche 4 : le comité de la manche 2 est signalé comme exclu", () => {

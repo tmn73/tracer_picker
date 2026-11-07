@@ -168,8 +168,5 @@ h2 { color: var(--blue); }
 
 .home-card.manual { background: var(--pick-bg); border-left-color: var(--pick); }
 
-.howto h3 { margin: 16px 0 4px; font-size: 1em; color: var(--blue); }
-.howto ul { margin: 6px 0 6px 20px; padding: 0; }
-.howto li { margin: 3px 0; }
 .howto-lead { background: #eef2ff; border-left: 4px solid var(--blue); border-radius: 6px; padding: 10px 12px; }
-.howto-example { background: #fffbea; border-left: 4px solid #e0b100; border-radius: 6px; padding: 10px 12px; }
+.howto-small { color: var(--muted); font-size: 0.9em; }

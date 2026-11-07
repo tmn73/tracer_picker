@@ -215,26 +215,10 @@ export const generateHtml = (
       .map(([c, n]) => `${c} ${n}`)
       .join(", ") || "aucun";
   const effectifs = e
-    ? `<p><strong>Base de calcul de cette compétition :</strong> ${plural(
-        e.retenus,
-        "coureur"
-      )} retenus (hors organisateur ${esc(e.organisateur.committee)} et comités exclus : ${esc(
-        list(e.exclus)
-      )}), plus des comités ajoutés : ${esc(list(e.artificiels))}. Total : ${e.base}.</p>`
+    ? `<p class="howto-small">Base de calcul : ${plural(e.retenus, "coureur")} + ${esc(
+        list(e.artificiels)
+      )} = ${e.base}. Exclus : ${esc(list(e.exclus))}.</p>`
     : "";
-
-  // Exemple concret tiré de ce tirage (manche 2)
-  const example = (() => {
-    const rows = drawn[1];
-    const picked = rows && pickedOf(rows);
-    const top = rows?.find((r) => r.status !== "exclu");
-    if (!rows || !picked || !top || picked.status !== "tire") return "";
-    const text =
-      picked.committee === top.committee
-        ? `<strong>Ici, en manche 2 :</strong> ${esc(top.committee)} avait le plus de billets (${pct(top.chance)}) et c'est lui qui est sorti.`
-        : `<strong>Ici, en manche 2 :</strong> ${esc(top.committee)} avait le plus de billets (${pct(top.chance)}), mais le hasard a désigné ${esc(picked.committee)} (${pct(picked.chance)}). C'est normal : avec un tirage, le favori n'est jamais sûr de sortir.`;
-    return `<p class="howto-example">${text}</p>`;
-  })();
 
   const location = [competitionMetadata.station, competitionMetadata.location]
     .filter(Boolean)
@@ -272,24 +256,10 @@ export const generateHtml = (
   </div>
 
   <details class="howto">
-    <summary>Pourquoi des pourcentages si c'est un tirage au sort ?</summary>
-    <p class="howto-lead"><strong>C'est une loterie avec des billets.</strong> Chaque comité reçoit des billets dans un sac, puis on en tire un au hasard. Le pourcentage est la <strong>part de billets</strong> du comité : plus il en a, plus il a de chances de sortir, mais rien n'est joué d'avance.</p>
-    ${example}
-    <h3>Pourquoi les comités n'ont pas tous le même nombre de billets ?</h3>
-    <ul>
-      <li><strong>Plus de coureurs</strong> : plus de billets.</li>
-      <li><strong>Moins il a déjà tracé cette saison</strong> : plus de billets.</li>
-      <li><strong>Plus il attend depuis son dernier traçage</strong> : plus de billets.</li>
-    </ul>
-    <p>Le but : sur une saison, chaque comité trace à peu près à son tour, sans que personne ne choisisse à la main.</p>
-    <h3>Pourquoi ne pas simplement prendre celui qui a le plus de billets ?</h3>
-    <p>Ce seraient toujours les mêmes en tête, et le résultat serait prévisible et discutable. Avec un tirage, chacun a sa chance et personne ne peut dire que c'est arrangé.</p>
-    <h3>Les règles</h3>
-    <ul>
-      <li>Manches 1 et 3 : le comité organisateur trace d'office, sans tirage.</li>
-      <li>Manches 2 et 4 : tirage au sort entre les autres comités.</li>
-      <li>Le comité tiré en manche 2 ne peut pas l'être en manche 4.</li>
-    </ul>
+    <summary>Comment ça marche ?</summary>
+    <p class="howto-lead"><strong>Un tirage avec des billets.</strong> Chaque comité a des billets dans un sac, on en tire un au hasard. Le % est sa part de billets : plus il en a, plus il a de chances, mais le favori peut perdre.</p>
+    <p><strong>Plus de billets</strong> si le comité a plus de coureurs, a peu tracé cette saison, ou attend depuis longtemps. Ainsi chacun trace à son tour sur la saison.</p>
+    <p><strong>Règles :</strong> manches 1 et 3 = organisateur d'office · le comité tiré en manche 2 est exclu de la manche 4.</p>
     ${effectifs}
   </details>
 
