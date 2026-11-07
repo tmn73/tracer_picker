@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx --env-file=.env index.ts",
+    "phone": "tsx phone.ts",
     "test": "bun test"
   },
   "devDependencies": {

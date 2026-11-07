@@ -1,4 +1,13 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import type { CommitteeCode } from "../constants";
+
+// La feuille de style est intégrée à la page : un seul fichier, facile à envoyer sur un téléphone
+const BASE_CSS = fs.readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "style.css"),
+  "utf-8"
+);
 
 interface CommitteeEntry {
   committee: CommitteeCode;
@@ -58,7 +67,7 @@ export const generateHtml = (
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Résultats Traceurs</title>
-        <link rel="stylesheet" href="style.css">
+        <style>${BASE_CSS}</style>
         <style>
           .header {
             background-color: ${headerColor};

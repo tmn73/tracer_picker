@@ -188,6 +188,7 @@ async function main() {
 
     fs.writeFileSync("./results/results.html", html);
     await open("./results/results.html");
+    log.info("Sur ton téléphone : lance « npm run phone » et ouvre l'adresse affichée.");
 
     outro("Martin Construction vous remercie pour votre confiance.");
   } catch (error) {
