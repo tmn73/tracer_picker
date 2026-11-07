@@ -21,8 +21,11 @@ export const login = async (page: Page, email: string, password: string) => {
   try {
     s.start("Connexion...");
     await fillTheLoginForm(page, email, password);
-    await clickTheValidateButton(page);
-    await page.waitForNetworkIdle();
+    // Attendre réellement la navigation post-connexion (et pas seulement un instant sans réseau)
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle0" }),
+      clickTheValidateButton(page),
+    ]);
     s.stop("Connecté en tant que " + email + " ✅");
   } catch (error) {
     s.stop("Erreur lors de la connexion au site ❌", 1);
@@ -54,7 +57,13 @@ export async function accessTheCompetitionPage(
   try {
     s.start("Recherche de la compétition...");
 
-    await page.waitForNetworkIdle();
+    // Garantir qu'on est sur la page de recherche des compétitions
+    if (!page.url().includes("page=competition")) {
+      await page.goto(
+        "https://inscription.ffs.fr/public/index.php?page=competition",
+        { waitUntil: "networkidle0" }
+      );
+    }
     await page.waitForSelector("#num_evenement", { visible: true });
     await page.type("#num_evenement", competitionCode, { delay: 100 });
 
