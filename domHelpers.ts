@@ -26,6 +26,20 @@ export const login = async (page: Page, email: string, password: string) => {
       page.waitForNavigation({ waitUntil: "networkidle0" }),
       clickTheValidateButton(page),
     ]);
+    // Si le formulaire de connexion est toujours affiché, les identifiants ont été refusés
+    const loginFormStillThere = await page.$("#form_login");
+    if (loginFormStillThere) {
+      const message = await page.evaluate(
+        () =>
+          document
+            .querySelector(".alert, .invalid-feedback, .text-danger")
+            ?.textContent?.trim() || ""
+      );
+      throw new Error(
+        "Connexion refusée : vérifie EMAIL et PASSWORD dans le fichier .env" +
+          (message ? ` (le site dit : « ${message} »)` : "")
+      );
+    }
     s.stop("Connecté en tant que " + email + " ✅");
   } catch (error) {
     s.stop("Erreur lors de la connexion au site ❌", 1);
@@ -64,7 +78,15 @@ export async function accessTheCompetitionPage(
         { waitUntil: "networkidle0" }
       );
     }
-    await page.waitForSelector("#num_evenement", { visible: true });
+    try {
+      await page.waitForSelector("#num_evenement", { visible: true });
+    } catch (error) {
+      // Diagnostic : on garde une capture de ce que voit le navigateur
+      const shot = "./results/debug.png";
+      await page.screenshot({ path: shot, fullPage: true }).catch(() => {});
+      log.error(`Page inattendue : ${page.url()} (capture : ${shot})`);
+      throw error;
+    }
     await page.type("#num_evenement", competitionCode, { delay: 100 });
 
     // Le formulaire filtre par défaut sur la période en cours : on élargit la plage de dates
