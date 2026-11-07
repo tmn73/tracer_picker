@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import {
+  computeOccurrenceWeight,
   generateCommitteeResults,
   performRandomDraw,
   type CommitteeEntry,
@@ -79,6 +80,26 @@ describe("generateCommitteeResults", () => {
   test("conserve le code de compétition", () => {
     const r = generateCommitteeResults(counts, "EQ", NO_HISTORY, "99999");
     expect(r.competitionCode).toBe("99999");
+  });
+
+  test("un petit comité (< 0,5 %) garde une probabilité non nulle", () => {
+    const r = generateCommitteeResults(
+      { EQ: 10, SA: 1000, MB: 1 } as any,
+      "EQ",
+      NO_HISTORY,
+      "1"
+    );
+    const mb = r.manche2.find((e) => e.committee === "MB")!;
+    expect(mb.percentage).toBeGreaterThan(0);
+    // random à 0.9999 -> tombe sur le dernier comité (MB)
+    mockRandom(0.9999, 0.9999);
+    const r2 = generateCommitteeResults(
+      { EQ: 10, SA: 1000, MB: 1 } as any,
+      "EQ",
+      NO_HISTORY,
+      "1"
+    );
+    expect(picked(r2.manche2)[0].committee).toBe("MB");
   });
 
   test("ignore les comités à 0 coureur", () => {
@@ -194,6 +215,26 @@ describe("performRandomDraw : pondération par l'historique", () => {
     expect(sa.competitionsSinceLastTrace).toBe(3);
     expect(mb.competitionsSinceLastTrace).toBe(0);
     expect(mb.occurrences).toBe(6);
+  });
+
+  test("un comité jamais tracé pèse plus qu'un comité tracé une fois (à attente égale)", () => {
+    // SA et MB ont la même attente (dernière course) mais MB a 1 traçage de plus
+    const h = {
+      "01/01/2026_a_sl": { traceurs: { manche1: "EQ", manche2: "MB", manche3: "EQ", manche4: "AP" } },
+      "08/01/2026_b_sl": { traceurs: { manche1: "EQ", manche2: "AP", manche3: "EQ", manche4: "AP" } },
+    } as unknown as SelectionHistory;
+    const list = [entry("SA", 10, 50), entry("MB", 10, 50)];
+    const r = draw(list, list, h);
+    const sa = r.manche2.find((e) => e.committee === "SA")!;
+    const mb = r.manche2.find((e) => e.committee === "MB")!;
+    expect(sa.occurrences).toBe(0);
+    expect(mb.occurrences).toBe(1);
+    expect(sa.baseWeight!).toBeGreaterThan(mb.baseWeight!);
+  });
+
+  test("computeOccurrenceWeight décroît avec le nombre de traçages", () => {
+    expect(computeOccurrenceWeight(0)).toBeGreaterThan(computeOccurrenceWeight(1));
+    expect(computeOccurrenceWeight(1)).toBeGreaterThan(computeOccurrenceWeight(2));
   });
 
   test("sans historique, des parts égales donnent des poids égaux", () => {

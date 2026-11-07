@@ -39,6 +39,13 @@ type HistoricalKey = `${string}_${string}_${string}_${string}`;
 
 export type SelectionHistory = Record<HistoricalKey, HistoricalEntry>;
 
+// Poids lié au nombre de traçages passés : plus un comité a tracé, moins il pèse.
+// Un comité qui n'a jamais tracé (0) a donc le poids le plus élevé.
+export const computeOccurrenceWeight = (occurrences: number): number =>
+  ALGO_WEIGHT_KNOBS.OCCURRENCE_WEIGHT_ENABLED
+    ? 1 / ((occurrences + 1) * ALGO_WEIGHT_KNOBS.OCCURRENCE_DIVIDER)
+    : 1;
+
 // Helper functions to calculate weights based on history
 const calculateHistoricalWeights = (
   committees: CommitteeEntry[],
@@ -84,11 +91,9 @@ const calculateHistoricalWeights = (
       entry.percentage * ALGO_WEIGHT_KNOBS.BASE_PERCENTAGE_WEIGHT;
 
     // Calcul du poids des occurrences
-    const occurrenceWeight = ALGO_WEIGHT_KNOBS.OCCURRENCE_WEIGHT_ENABLED
-      ? 1 /
-        ((occurrences.get(entry.committee) || 1) *
-          ALGO_WEIGHT_KNOBS.OCCURRENCE_DIVIDER)
-      : 1;
+    const occurrenceWeight = computeOccurrenceWeight(
+      occurrences.get(entry.committee) || 0
+    );
 
     // Calcul du poids du nombre de courses depuis le dernier traçage
     const competitionsWeight =
@@ -148,7 +153,8 @@ export const generateCommitteeResults = (
   // Calcul des probabilités pour manche 2 et 4
   const weightedProbabilities = nonHomeCommittees.map(([committee, count]) => ({
     committee: committee as CommitteeCode,
-    percentage: Math.round((count / totalNonHome) * 100) || 0,
+    // Pas d'arrondi : un petit comité (< 0,5 %) ne doit pas tomber à 0 et être exclu du tirage
+    percentage: (count / totalNonHome) * 100 || 0,
     count,
   }));
 

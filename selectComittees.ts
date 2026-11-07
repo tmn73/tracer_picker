@@ -5,6 +5,7 @@ import {
   type CommitteeEntry,
 } from "./algoSelection";
 import type { CommitteeCode } from "./constants";
+import { computeOccurrenceWeight } from "./algoSelection";
 import { EXTRA_COMMITTEES_COUNT, ALGO_WEIGHT_KNOBS, FILTERED_OUT_COMMITTEES } from "./constants";
 import fs from "fs";
 import path from "path";
@@ -58,8 +59,7 @@ export const displayResults = (results: CommitteeResults) => {
 
     const totalCompetitors = manche.reduce((sum, c) => sum + c.count, 0);
     const basePercentage = (selected.count / totalCompetitors) * 100;
-    const occurrenceWeight =
-      1 / ((selected.occurrences || 1) * ALGO_WEIGHT_KNOBS.OCCURRENCE_DIVIDER);
+    const occurrenceWeight = computeOccurrenceWeight(selected.occurrences || 0);
     const competitionsWeight =
       Math.max(
         ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_MIN,
@@ -87,7 +87,7 @@ export const displayResults = (results: CommitteeResults) => {
       // Texte pour les occurrences
       const occurrenceImpactText =
         selected.occurrences === 0
-          ? "n'est pas impacté par les occurrences car il n'a pas encore tracé"
+          ? "reçoit le poids maximal car il n'a pas encore tracé"
           : occurrenceWeight < 1
             ? `est pénalisé par ses ${selected.occurrences} traçages cette saison`
             : "n'est pas pénalisé par ses occurrences";
@@ -118,7 +118,7 @@ export const displayResults = (results: CommitteeResults) => {
     • Calcul détaillé:
       - % base (coureurs): ${selected.count
       }/${totalCompetitors} = ${basePercentage.toFixed(2)}%
-      - Poids occurrences: 1 / (${selected.occurrences || 1} × ${ALGO_WEIGHT_KNOBS.OCCURRENCE_DIVIDER
+      - Poids occurrences: 1 / ((${selected.occurrences || 0} + 1) × ${ALGO_WEIGHT_KNOBS.OCCURRENCE_DIVIDER
       }) = ${occurrenceWeight.toFixed(3)}
       - Poids courses: max(${ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_MIN
       }, ${selected.competitionsSinceLastTrace || 0})^${ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_POWER

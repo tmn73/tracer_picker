@@ -40,9 +40,10 @@ export const ALGO_WEIGHT_KNOBS = {
   // Poids des occurrences totales
   OCCURRENCE_WEIGHT_ENABLED: true, // Si false, le poids sera toujours 1
   // Ex: Si OCCURRENCE_DIVIDER = 2
-  // - 1 occurrence -> weight = 1/(1*2) = 0.5
-  // - 2 occurrences -> weight = 1/(2*2) = 0.25
-  // - 3 occurrences -> weight = 1/(3*2) = 0.17
+  // weight = 1 / ((occurrences + 1) * OCCURRENCE_DIVIDER)
+  // - 0 occurrence -> weight = 1/(1*2) = 0.5 (jamais tracé : poids maximal)
+  // - 1 occurrence -> weight = 1/(2*2) = 0.25
+  // - 2 occurrences -> weight = 1/(3*2) = 0.17
   OCCURRENCE_DIVIDER: 1.5,
 
   // Poids du nombre de courses depuis le dernier traçage
