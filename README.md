@@ -52,8 +52,10 @@ PASSWORD=...
 ## Utilisation
 
 ```bash
-bun run index.ts
+npm start
 ```
+
+Cela lance `tsx --env-file=.env index.ts` (Node), à exécuter dans un vrai terminal car l'outil est interactif. `bun run index.ts` fonctionne aussi, mais les anciennes versions de Bun plantent sur les prompts (`FilePoll.register failed`).
 
 Fichiers produits dans `results/` :
 
