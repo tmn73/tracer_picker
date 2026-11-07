@@ -7,7 +7,8 @@
   },
   "devDependencies": {
     "@puppeteer/browsers": "^2.7.0",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "tsx": "^4.23.15"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
