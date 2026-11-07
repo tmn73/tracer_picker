@@ -21,7 +21,8 @@ export type CommitteeResults = {
   manche3: CommitteeEntry[];
   manche4: CommitteeEntry[];
   date?: string;
-  location?: string;
+  location?: string; // nom de la course
+  station?: string; // lieu de la course (station)
   discipline?: string;
   competitionCode: string;
   // Détail des effectifs utilisés pour le tirage (affichage uniquement)

@@ -95,7 +95,7 @@ async function main() {
       committeeCode,
       competitionCode
     );
-    const { discipline, date, location } = fullResults;
+    const { discipline, date, location, station } = fullResults;
     displayResults(fullResults);
 
     // On garde aussi la date, le lieu et la discipline : ils sont réaffichés après un changement manuel
@@ -182,6 +182,7 @@ async function main() {
       date,
       discipline,
       location,
+      station,
       homeCommittee: committeeCode,
     });
 

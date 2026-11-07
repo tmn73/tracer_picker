@@ -19,7 +19,8 @@ interface CommitteeResults {
 interface CompetitionMetadata {
   date: string;
   discipline: string;
-  location: string;
+  location: string; // nom de la course
+  station?: string; // lieu de la course
   homeCommittee: CommitteeCode;
 }
 
@@ -68,8 +69,14 @@ export const generateHtml = (
         <div class="header">
             <h1>🎿 Attribution des Manches</h1>
             <div class="competition-info">
-                <p>${competitionMetadata.discipline} - ${competitionMetadata.date
-    } - ${competitionMetadata.location}</p>
+                <p>${[
+                  competitionMetadata.discipline,
+                  competitionMetadata.date,
+                  competitionMetadata.station,
+                  competitionMetadata.location,
+                ]
+                  .filter(Boolean)
+                  .join(" - ")}</p>
             </div>
             <p>Généré le ${new Date().toLocaleString("fr-FR")}</p>
         </div>

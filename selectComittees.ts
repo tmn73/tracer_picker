@@ -155,7 +155,7 @@ export const displayResults = (results: CommitteeResults) => {
 
   console.log(`
 ═══ Compétition ${results.competitionCode} ═══
-  Date : ${results.date || "Non spécifiée"}   Lieu : ${results.location || "Non spécifié"}   Discipline : ${results.discipline || "Non spécifiée"}
+  Date : ${results.date || "Non spécifiée"}   Lieu : ${[results.station, results.location].filter(Boolean).join(" – ") || "Non spécifié"}   Discipline : ${results.discipline || "Non spécifiée"}
   Comité organisateur : ${home}`);
 
   const e = results.effectifs;
@@ -249,10 +249,18 @@ export const selectCommittees = async (
   const disciplineMatch = titre.match(/-\s*([A-Z]+)\s*\)/);
   const discipline = disciplineMatch ? disciplineMatch[1] : "";
 
-  // Le lieu est dans le h4
+  // Le nom de la course est dans le h4
   const location = sousTitre;
 
-  const metadata = { discipline, date, location };
+  // La station est dans le titre : "... (CHAMROUSSE S-SL)" -> "Chamrousse"
+  const stationMatch = titre.match(/\(([^()]*?)\s+[A-Z]-[A-Z]+\)/);
+  const station = stationMatch
+    ? stationMatch[1]
+        .toLowerCase()
+        .replace(/(^|[\s'-])([a-zà-ÿ])/g, (_, sep, letter) => sep + letter.toUpperCase())
+    : "";
+
+  const metadata = { discipline, date, location, station };
 
   const allCommitteeCells = (await page.evaluate(() => {
     // Colonne 8 = CS (comité) dans les lignes du tbody
