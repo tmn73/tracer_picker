@@ -21,7 +21,7 @@ export const countCompetitorsByCommittee = (committees: CommitteeCode[]) => {
   }, {} as Record<CommitteeCode, number>);
 };
 
-const pct = (n: number, decimals = 1) => n.toFixed(decimals).replace(".", ",");
+export const pct = (n: number, decimals = 1) => n.toFixed(decimals).replace(".", ",");
 
 export type DrawRow = {
   committee: CommitteeCode;
