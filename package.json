@@ -2,6 +2,9 @@
   "name": "tracer_picker",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
   "devDependencies": {
     "@puppeteer/browsers": "^2.7.0",
     "@types/bun": "latest"
