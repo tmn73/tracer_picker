@@ -22,5 +22,45 @@
       "manche3": "EQ",
       "manche4": "DA"
     }
+  },
+  "06/01/2026_ski_chrono_samse_tour_": {
+    "traceurs": {
+      "manche1": "SA",
+      "manche2": "MB",
+      "manche3": "SA",
+      "manche4": "CNE"
+    }
+  },
+  "14/01/2026_ski_chrono_samse_tour_": {
+    "traceurs": {
+      "manche1": "SA",
+      "manche2": "ORS",
+      "manche3": "CNE",
+      "manche4": "SA"
+    }
+  },
+  "19/01/2026_ski_chrono_samse_tour_+_nc_mon_": {
+    "traceurs": {
+      "manche1": "AP",
+      "manche2": "MB",
+      "manche3": "AP",
+      "manche4": "APEX"
+    }
+  },
+  "21/01/2026_ski_chrono_samse_tour+nc_mon_sl_": {
+    "traceurs": {
+      "manche1": "AP",
+      "manche2": "DA",
+      "manche3": "AP",
+      "manche4": "CNE"
+    }
+  },
+  "29/01/2026_ski_chrono_samse_tour_": {
+    "traceurs": {
+      "manche1": "MB",
+      "manche2": "DA",
+      "manche3": "MB",
+      "manche4": "ORS"
+    }
   }
 }
