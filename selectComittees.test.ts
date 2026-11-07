@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { performRandomDraw, type CommitteeEntry, type SelectionHistory } from "./algoSelection";
-import { buildDrawRows, drawRowsForTable, explainPick } from "./selectComittees";
+import { buildDrawRows, displayResults, drawRowsForTable, explainPick, formatTable } from "./selectComittees";
+import { generateHtml } from "./results/generateHtml";
 
 let randomSpy: ReturnType<typeof spyOn> | undefined;
 afterEach(() => {
@@ -108,5 +109,80 @@ describe("explainPick", () => {
 
   test("manche vide : message sans erreur", () => {
     expect(explainPick([], "M2")).toContain("aucun comité");
+  });
+});
+
+describe("formatTable", () => {
+  const rows = [
+    { Comité: "PE", Coureurs: 5, "Chance %": "63,5" },
+    { Comité: "SA", Coureurs: 30, "Chance %": "9,0" },
+  ];
+
+  test("pas d'apostrophes ni de colonne d'index", () => {
+    const out = formatTable(rows);
+    expect(out).not.toContain("'");
+    expect(out).not.toContain("(index)");
+    expect(out).toContain("PE");
+  });
+
+  test("toutes les lignes ont la même largeur (tableau aligné)", () => {
+    const widths = new Set(formatTable(rows).split("\n").map((l) => [...l].length));
+    expect(widths.size).toBe(1);
+  });
+
+  test("tableau vide : chaîne vide", () => {
+    expect(formatTable([])).toBe("");
+  });
+});
+
+describe("choix manuel d'une manche d'office (M3)", () => {
+  const base = () => {
+    const r = performRandomDraw(
+      {
+        manche1: [{ committee: "DA", count: 12, percentage: 100, isHomeCommittee: true, isPicked: true }],
+        manche2: candidates.map((c) => ({ ...c })),
+        manche3: [{ committee: "DA", count: 12, percentage: 100, isHomeCommittee: true, isPicked: true }],
+        manche4: candidates.map((c) => ({ ...c })),
+      },
+      history
+    );
+    // Ce que fait updateManche pour M3 -> EQ
+    return {
+      ...r,
+      competitionCode: "10439",
+      manche3: [
+        { committee: "EQ", count: 0, percentage: 0, isPicked: true, isHandpicked: true },
+        { committee: "DA", count: 12, percentage: 100, isHomeCommittee: true, isPicked: false },
+      ],
+    } as any;
+  };
+
+  test("le récapitulatif du terminal affiche EQ en M3, en choix manuel", () => {
+    const logs: string[] = [];
+    const spy = spyOn(console, "log").mockImplementation((...a: unknown[]) => {
+      logs.push(a.join(" "));
+    });
+    try {
+      displayResults(base());
+    } finally {
+      spy.mockRestore();
+    }
+    const m3 = logs.join("\n").split("\n").find((l) => l.includes("│ M3"))!;
+    expect(m3).toContain("EQ");
+    expect(m3).toContain("Choix manuel");
+    expect(m3).not.toContain("DA");
+  });
+
+  test("la page HTML affiche EQ en M3, sans classement ni « Exclu »", () => {
+    const html = generateHtml(base(), {
+      date: "19/03/2026", discipline: "SL", location: "x", homeCommittee: "DA" as any,
+    });
+    // Colonne de la manche 3 uniquement : « Exclu » est normal en manche 4
+    const m3 = html.split("<h2>Manche 3</h2>")[1].split('<div class="manche-column">')[0];
+    expect(m3).toContain("EQ");
+    expect(m3).toContain("Choix manuel pour cette manche.");
+    expect(m3).not.toContain("rank-item");
+    expect(m3).not.toContain("DA");
+    expect(html.match(/class="home-card/g)!.length).toBe(2);
   });
 });

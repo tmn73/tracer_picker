@@ -120,7 +120,9 @@ export const explainPick = (rows: DrawRow[], manche: string): string => {
       : `a déjà tracé ${occurrences} fois (×${pct(picked.occWeight ?? 1, 2)})`;
   const waitText =
     wait === 0
-      ? "a tracé à la dernière course (pas de bonus d'attente)"
+      ? occurrences === 0
+        ? "n'a pas d'historique pour l'instant"
+        : "a tracé à la dernière course (pas de bonus d'attente)"
       : `n'a pas tracé depuis ${wait} course${wait > 1 ? "s" : ""} (×${pct(
           picked.waitWeight ?? 1,
           2
@@ -145,8 +147,47 @@ const listCounts = (counts: Partial<Record<string, number>>) =>
     .map(([committee, count]) => `${committee} ${count}`)
     .join(", ") || "aucun";
 
+// Tableau texte aligné, sans apostrophes ni colonne d'index (console.table varie selon Node/Bun)
+export const formatTable = (rows: Record<string, string | number>[]): string => {
+  if (rows.length === 0) return "";
+  const cols = Object.keys(rows[0]);
+  const cell = (v: unknown) => String(v ?? "");
+  const widths = cols.map((c) =>
+    Math.max(c.length, ...rows.map((r) => cell(r[c]).length))
+  );
+  const isNumeric = (v: string) => v !== "" && /^[–\d,.\s%×-]+$/.test(v);
+  const line = (left: string, mid: string, right: string) =>
+    left + widths.map((w) => "─".repeat(w + 2)).join(mid) + right;
+  const fmt = (values: string[], align: boolean) =>
+    "│" +
+    values
+      .map((v, i) =>
+        " " + (align && isNumeric(v) ? v.padStart(widths[i]) : v.padEnd(widths[i])) + " "
+      )
+      .join("│") +
+    "│";
+  return [
+    line("┌", "┬", "┐"),
+    fmt(cols, false),
+    line("├", "┼", "┤"),
+    ...rows.map((r) => fmt(cols.map((c) => cell(r[c])), true)),
+    line("└", "┴", "┘"),
+  ].join("\n");
+};
+
 export const displayResults = (results: CommitteeResults) => {
-  const home = results.manche1[0].committee;
+  const organizer = results.effectifs?.organisateur.committee ?? results.manche1[0].committee;
+  // M1 et M3 : le comité organisateur d'office, sauf choix manuel
+  const fixedPick = (manche: CommitteeEntry[]) =>
+    manche.find((c) => c.isPicked) ?? manche[0];
+  const fixedRow = (label: string, manche: CommitteeEntry[]) => {
+    const pick = fixedPick(manche);
+    return {
+      Manche: label,
+      Traceur: pick?.committee ?? "–",
+      Pourquoi: pick?.isHandpicked ? "Choix manuel" : "Comité organisateur (d'office)",
+    };
+  };
   const rows2 = buildDrawRows(results.manche2);
   const rows4 = buildDrawRows(results.manche4);
   const picked2 = rows2.find((r) => r.status === "tire" || r.status === "manuel");
@@ -156,7 +197,7 @@ export const displayResults = (results: CommitteeResults) => {
   console.log(`
 ═══ Compétition ${results.competitionCode} ═══
   Date : ${results.date || "Non spécifiée"}   Lieu : ${[results.station, results.location].filter(Boolean).join(" – ") || "Non spécifié"}   Discipline : ${results.discipline || "Non spécifiée"}
-  Comité organisateur : ${home}`);
+  Comité organisateur : ${organizer}`);
 
   const e = results.effectifs;
   if (e) {
@@ -180,12 +221,12 @@ ${effectifLine("= Base de calcul des %", String(e.base))}`);
           })`;
 
   console.log("\n─── Récapitulatif ───");
-  console.table([
-    { Manche: "M1", Traceur: home, Pourquoi: "Comité organisateur (d'office)" },
+  console.log(formatTable([
+    fixedRow("M1", results.manche1),
     { Manche: "M2", Traceur: picked2?.committee ?? "–", Pourquoi: drawReason(picked2, rows2) },
-    { Manche: "M3", Traceur: home, Pourquoi: "Comité organisateur (d'office)" },
+    fixedRow("M3", results.manche3),
     { Manche: "M4", Traceur: picked4?.committee ?? "–", Pourquoi: drawReason(picked4, rows4) },
-  ]);
+  ]));
 
   console.log(`
 Comment lire les tableaux :
@@ -195,14 +236,14 @@ Comment lire les tableaux :
   Chance % = poids du comité ÷ somme des poids de la manche`);
 
   console.log("\n─── Manche 2 : tirage au sort ───");
-  console.table(drawRowsForTable(rows2, "exclu"));
+  console.log(formatTable(drawRowsForTable(rows2, "exclu")));
   console.log(explainPick(rows2, "M2"));
 
   console.log("\n─── Manche 4 : tirage au sort ───");
   if (excluded4) {
     console.log(`  ${excluded4.committee} est exclu de cette manche (déjà désigné en manche 2).`);
   }
-  console.table(drawRowsForTable(rows4, "exclu (déjà tiré en M2)"));
+  console.log(formatTable(drawRowsForTable(rows4, "exclu (déjà tiré en M2)")));
   console.log(explainPick(rows4, "M4") + "\n");
 };
 

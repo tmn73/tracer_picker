@@ -165,3 +165,5 @@ h2 { color: var(--blue); }
   .tile-committee { font-size: 1.5em; }
   .manches-grid { grid-template-columns: 1fr; }
 }
+
+.home-card.manual { background: var(--pick-bg); border-left-color: var(--pick); }

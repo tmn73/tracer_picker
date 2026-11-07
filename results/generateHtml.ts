@@ -34,9 +34,11 @@ const pct = (n: number) =>
 const pickedOf = (rows: DrawRow[]) =>
   rows.find((r) => r.status === "tire" || r.status === "manuel");
 
-// Une manche tirée au sort : comité organisateur (d'office) ou tirage ?
-const isHomeManche = (manche: CommitteeResults["manche1"]) =>
-  manche.length > 0 && manche.every((e) => e.isHomeCommittee);
+// Manches 1 et 3 : jamais de tirage (comité organisateur d'office, ou choix manuel)
+const isFixedManche = (index: number) => index === 0 || index === 2;
+
+const fixedPick = (manche: CommitteeResults["manche1"]) =>
+  manche.find((e) => e.isPicked) ?? manche[0];
 
 export const generateHtml = (
   results: CommitteeResults,
@@ -64,7 +66,7 @@ export const generateHtml = (
     results.manche4,
   ];
 
-  const drawn = manches.map((m) => (isHomeManche(m) ? null : buildDrawRows(m)));
+  const drawn = manches.map((m, i) => (isFixedManche(i) ? null : buildDrawRows(m)));
 
   // --- Récapitulatif : le traceur de chaque manche et la raison en une ligne ---
   const summaryTiles = manches
@@ -75,9 +77,10 @@ export const generateHtml = (
       let tileClass = "tile";
 
       if (!rows) {
-        committee = manche[0]?.committee ?? "–";
-        reason = "Comité organisateur (d'office)";
-        tileClass += " tile-home";
+        const pick = fixedPick(manche);
+        committee = pick?.committee ?? "–";
+        reason = pick?.isHandpicked ? "Choix manuel" : "Comité organisateur (d'office)";
+        tileClass += pick?.isHandpicked ? "" : " tile-home";
       } else {
         const picked = pickedOf(rows);
         committee = picked?.committee ?? "–";
@@ -105,14 +108,19 @@ export const generateHtml = (
 
       // Manches 1 et 3 : pas de tirage
       if (!rows) {
-        const home = manche[0];
+        const pick = fixedPick(manche);
+        const manual = !!pick?.isHandpicked;
         return `
         <div class="manche-column">
           <h2>Manche ${i + 1}</h2>
-          <div class="home-card">
-            <div class="home-name">${esc(home.committee)}</div>
-            <div class="home-meta">${plural(home.count, "coureur")}</div>
-            <p class="home-why">Comité organisateur : trace d'office, sans tirage au sort.</p>
+          <div class="home-card${manual ? " manual" : ""}">
+            <div class="home-name">${esc(pick?.committee ?? "–")}</div>
+            <div class="home-meta">${plural(pick?.count ?? 0, "coureur")}</div>
+            <p class="home-why">${
+              manual
+                ? "Choix manuel pour cette manche."
+                : "Comité organisateur : trace d'office, sans tirage au sort."
+            }</p>
           </div>
         </div>`;
       }
@@ -169,7 +177,13 @@ export const generateHtml = (
           occurrences === 0
             ? "N'a encore jamais tracé"
             : `A déjà tracé ${occurrences} fois`
-        } · ${wait === 0 ? "a tracé à la dernière course" : `${plural(wait, "course")} sans tracer`}.`;
+        } · ${
+          wait === 0
+            ? occurrences === 0
+              ? "pas d'historique pour l'instant"
+              : "a tracé à la dernière course"
+            : `${plural(wait, "course")} sans tracer`
+        }.`;
         why = `<p class="why"><strong>Pourquoi ${esc(picked.committee)} ?</strong> ${verdict}<span class="detail">${detail}</span></p>`;
       } else if (picked && picked.status === "manuel") {
         why = `<p class="why"><strong>${esc(picked.committee)}</strong> a été choisi manuellement.</p>`;
