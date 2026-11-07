@@ -14,6 +14,7 @@ import open from "open";
 import { generateHtml } from "./results/generateHtml";
 import fs from "fs";
 import { updateManche } from "./updateManche";
+import type { CommitteeResults } from "./algoSelection";
 
 
 // Add this type near the top of the file
@@ -94,10 +95,11 @@ async function main() {
       committeeCode,
       competitionCode
     );
-    const { discipline, date, location, ...results } = fullResults;
+    const { discipline, date, location } = fullResults;
     displayResults(fullResults);
 
-    let finalResults = results;
+    // On garde aussi la date, le lieu et la discipline : ils sont réaffichés après un changement manuel
+    let finalResults: CommitteeResults = fullResults;
     let isResultOk = false;
 
     while (!isResultOk) {

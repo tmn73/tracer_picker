@@ -24,6 +24,18 @@ export type CommitteeResults = {
   location?: string;
   discipline?: string;
   competitionCode: string;
+  // Détail des effectifs utilisés pour le tirage (affichage uniquement)
+  effectifs?: Effectifs;
+};
+
+export type Effectifs = {
+  organisateur: { committee: CommitteeCode; count: number };
+  totalPage: number; // inscrits sur la page, tous comités confondus
+  sansComite: number; // inscrits sans code comité
+  exclus: Partial<Record<string, number>>; // comités filtrés (jamais traceurs)
+  retenus: number; // coureurs retenus, hors organisateur et hors exclus
+  artificiels: Partial<Record<string, number>>; // comités ajoutés artificiellement
+  base: number; // base de calcul des pourcentages (retenus + artificiels)
 };
 
 export type HistoricalEntry = {
@@ -44,6 +56,15 @@ export type SelectionHistory = Record<HistoricalKey, HistoricalEntry>;
 export const computeOccurrenceWeight = (occurrences: number): number =>
   ALGO_WEIGHT_KNOBS.OCCURRENCE_WEIGHT_ENABLED
     ? 1 / ((occurrences + 1) * ALGO_WEIGHT_KNOBS.OCCURRENCE_DIVIDER)
+    : 1;
+
+// Poids lié à l'attente : plus un comité n'a pas tracé depuis longtemps, plus il pèse.
+export const computeWaitWeight = (competitionsSinceLastTrace: number): number =>
+  ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_WEIGHT_ENABLED
+    ? Math.max(
+        ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_MIN,
+        competitionsSinceLastTrace
+      ) ** ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_POWER
     : 1;
 
 // Helper functions to calculate weights based on history
@@ -96,13 +117,9 @@ const calculateHistoricalWeights = (
     );
 
     // Calcul du poids du nombre de courses depuis le dernier traçage
-    const competitionsWeight =
-      ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_WEIGHT_ENABLED
-        ? Math.max(
-            ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_MIN,
-            competitionsSinceLastTrace.get(entry.committee) || 0
-          ) ** ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_POWER
-        : 1;
+    const competitionsWeight = computeWaitWeight(
+      competitionsSinceLastTrace.get(entry.committee) || 0
+    );
 
     const baseWeight = occurrenceWeight * competitionsWeight;
     const newPercentage = basePercentage * baseWeight;

@@ -5,7 +5,7 @@ import {
   type CommitteeEntry,
 } from "./algoSelection";
 import type { CommitteeCode } from "./constants";
-import { computeOccurrenceWeight } from "./algoSelection";
+import { computeOccurrenceWeight, computeWaitWeight } from "./algoSelection";
 import { EXTRA_COMMITTEES_COUNT, ALGO_WEIGHT_KNOBS, FILTERED_OUT_COMMITTEES } from "./constants";
 import fs from "fs";
 import path from "path";
@@ -21,137 +21,189 @@ export const countCompetitorsByCommittee = (committees: CommitteeCode[]) => {
   }, {} as Record<CommitteeCode, number>);
 };
 
-export const formatResultsForDisplay = (results: CommitteeResults) => {
-  const allCommittees = new Set<CommitteeCode>();
-  // Ne prendre que les propriétés qui sont des arrays
-  (["manche1", "manche2", "manche3", "manche4"] as const).forEach((manche) =>
-    results[manche].forEach((c) => allCommittees.add(c.committee))
-  );
+const pct = (n: number, decimals = 1) => n.toFixed(decimals).replace(".", ",");
 
-  const okSymbol = "OK";
-  const emptySymbol = ".";
-
-  return Array.from(allCommittees).map((committee) => {
-    const entry = results.manche2.find((c) => c.committee === committee);
-
-    return {
-      Comité: committee,
-      M1: results.manche1.find((c) => c.committee === committee)?.isPicked
-        ? okSymbol
-        : emptySymbol,
-      M2: results.manche2.find((c) => c.committee === committee)?.isPicked
-        ? okSymbol
-        : emptySymbol,
-      M3: results.manche3.find((c) => c.committee === committee)?.isPicked
-        ? okSymbol
-        : emptySymbol,
-      M4: results.manche4.find((c) => c.committee === committee)?.isPicked
-        ? okSymbol
-        : emptySymbol,
-      Nb: entry?.count || 0,
-      "Courses depuis": entry?.competitionsSinceLastTrace || 0,
-      Occurences: entry?.occurrences || 0,
-      "%": entry?.percentage?.toFixed(1) || 0,
-    };
-  });
+export type DrawRow = {
+  committee: CommitteeCode;
+  count: number;
+  share: number; // part des coureurs parmi les comités candidats, en %
+  occurrences?: number;
+  wait?: number; // courses écoulées depuis le dernier traçage
+  occWeight?: number;
+  waitWeight?: number;
+  weight?: number; // part × ×traçages × ×attente
+  chance: number; // probabilité normalisée, en %
+  status: "tire" | "manuel" | "exclu" | "";
+  rank?: number;
 };
 
+// Transforme une manche tirée en lignes lisibles : tous les facteurs du calcul, triés par chance.
+export const buildDrawRows = (manche: CommitteeEntry[]): DrawRow[] => {
+  const total = manche.reduce((sum, c) => sum + c.count, 0);
+  const rows: DrawRow[] = manche.map((e) => {
+    const hasWeights = e.weight !== undefined;
+    const excluded = !e.isPicked && !e.isHandpicked && !hasWeights;
+    return {
+      committee: e.committee,
+      count: e.count,
+      share: total ? (e.count / total) * 100 : 0,
+      occurrences: e.occurrences,
+      wait: e.competitionsSinceLastTrace,
+      occWeight: hasWeights
+        ? computeOccurrenceWeight(e.occurrences ?? 0)
+        : undefined,
+      waitWeight: hasWeights
+        ? computeWaitWeight(e.competitionsSinceLastTrace ?? 0)
+        : undefined,
+      weight: e.weight,
+      chance: e.percentage,
+      status: e.isHandpicked
+        ? "manuel"
+        : e.isPicked
+          ? "tire"
+          : excluded
+            ? "exclu"
+            : "",
+    };
+  });
+
+  // Exclus en dernier, puis par chance décroissante
+  rows.sort(
+    (a, b) =>
+      Number(a.status === "exclu") - Number(b.status === "exclu") ||
+      b.chance - a.chance
+  );
+  let rank = 0;
+  rows.forEach((r) => {
+    if (r.status !== "exclu") r.rank = ++rank;
+  });
+  return rows;
+};
+
+export const drawRowsForTable = (rows: DrawRow[], excludedLabel: string) =>
+  rows.map((r) => ({
+    "#": r.rank ?? "–",
+    Comité: r.committee,
+    Coureurs: r.count,
+    "Part %": pct(r.share),
+    "Déjà tracé": r.occurrences ?? "–",
+    "Courses sans tracer": r.wait ?? "–",
+    "× traçages": r.occWeight !== undefined ? pct(r.occWeight, 2) : "–",
+    "× attente": r.waitWeight !== undefined ? pct(r.waitWeight, 2) : "–",
+    Poids: r.weight !== undefined ? pct(r.weight) : "–",
+    "Chance %": r.status === "exclu" ? "0" : pct(r.chance),
+    Résultat:
+      r.status === "tire"
+        ? "◀ TIRÉ"
+        : r.status === "manuel"
+          ? "◀ CHOIX MANUEL"
+          : r.status === "exclu"
+            ? excludedLabel
+            : "",
+  }));
+
+// Phrase qui explique pourquoi ce comité a été désigné pour la manche.
+export const explainPick = (rows: DrawRow[], manche: string): string => {
+  const picked = rows.find((r) => r.status === "tire" || r.status === "manuel");
+  if (!picked) return `${manche} : aucun comité disponible.`;
+  if (picked.status === "manuel") {
+    return `${manche} : ${picked.committee} a été choisi manuellement.`;
+  }
+
+  const candidates = rows.filter((r) => r.status !== "exclu").length;
+  const occurrences = picked.occurrences ?? 0;
+  const wait = picked.wait ?? 0;
+
+  const occurrencesText =
+    occurrences === 0
+      ? `n'a encore jamais tracé (×${pct(picked.occWeight ?? 1, 2)})`
+      : `a déjà tracé ${occurrences} fois (×${pct(picked.occWeight ?? 1, 2)})`;
+  const waitText =
+    wait === 0
+      ? "a tracé à la dernière course (pas de bonus d'attente)"
+      : `n'a pas tracé depuis ${wait} course${wait > 1 ? "s" : ""} (×${pct(
+          picked.waitWeight ?? 1,
+          2
+        )})`;
+  const verdict =
+    picked.rank === 1
+      ? "C'était le favori du tirage."
+      : `Il n'était que n°${picked.rank} sur ${candidates} : c'est le tirage au sort qui l'a désigné.`;
+
+  return `${manche} : ${picked.committee} représente ${pct(
+    picked.share
+  )} % des coureurs, ${occurrencesText} et ${waitText}. Poids ${pct(
+    picked.weight ?? 0
+  )} → ${pct(picked.chance)} % de chances. ${verdict}`;
+};
+
+const effectifLine = (label: string, value: string) =>
+  `  ${label.padEnd(34, ".")} ${value}`;
+
+const listCounts = (counts: Partial<Record<string, number>>) =>
+  Object.entries(counts)
+    .map(([committee, count]) => `${committee} ${count}`)
+    .join(", ") || "aucun";
+
 export const displayResults = (results: CommitteeResults) => {
-  const formatMancheDetails = (manche: CommitteeEntry[], mancheNum: number) => {
-    const selected = manche.find((c) => c.isPicked);
-    if (!selected) return "";
+  const home = results.manche1[0].committee;
+  const rows2 = buildDrawRows(results.manche2);
+  const rows4 = buildDrawRows(results.manche4);
+  const picked2 = rows2.find((r) => r.status === "tire" || r.status === "manuel");
+  const picked4 = rows4.find((r) => r.status === "tire" || r.status === "manuel");
+  const excluded4 = rows4.find((r) => r.status === "exclu");
 
-    const totalCompetitors = manche.reduce((sum, c) => sum + c.count, 0);
-    const basePercentage = (selected.count / totalCompetitors) * 100;
-    const occurrenceWeight = computeOccurrenceWeight(selected.occurrences || 0);
-    const competitionsWeight =
-      Math.max(
-        ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_MIN,
-        selected.competitionsSinceLastTrace || 0
-      ) ** ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_POWER;
-
-    // Construction de l'explication en langage naturel
-    const explanation = (() => {
-      const occurrencesText =
-        selected.occurrences === 0
-          ? "n'a pas encore tracé cette saison"
-          : `a tracé ${selected.occurrences} fois cette saison`;
-
-      const coursesDepuisText =
-        selected.competitionsSinceLastTrace === 0
-          ? "vient de tracer à la dernière course"
-          : selected.competitionsSinceLastTrace === 1
-            ? "n'a pas tracé depuis 1 course"
-            : `n'a pas tracé depuis ${selected.competitionsSinceLastTrace} courses`;
-
-      const competitorsText = `représente ${basePercentage.toFixed(
-        1
-      )}% des coureurs (${selected.count}/${totalCompetitors})`;
-
-      // Texte pour les occurrences
-      const occurrenceImpactText =
-        selected.occurrences === 0
-          ? "reçoit le poids maximal car il n'a pas encore tracé"
-          : occurrenceWeight < 1
-            ? `est pénalisé par ses ${selected.occurrences} traçages cette saison`
-            : "n'est pas pénalisé par ses occurrences";
-
-      // Texte pour le temps d'attente
-      const waitingImpactText =
-        competitionsWeight <= 1
-          ? "ne reçoit pas de bonus d'attente car il a tracé récemment"
-          : `reçoit un bonus car il attend depuis ${selected.competitionsSinceLastTrace} courses`;
-
-      return `Le comité ${selected.committee
-        } ${competitorsText}. Il ${occurrencesText} et ${coursesDepuisText}.
-      Son score initial de ${basePercentage.toFixed(
-          1
-        )}% ${occurrenceImpactText} (×${occurrenceWeight.toFixed(3)})
-      et ${waitingImpactText} (×${competitionsWeight.toFixed(3)}),
-      donnant un score final de ${selected.percentage?.toFixed(3)}%.`;
-    })();
-
-    return `
-    ${explanation}
-
-    Détails du calcul:
-    • Nombre de coureurs: ${selected.count}
-    • Nombre d'occurrences: ${selected.occurrences || 0}
-    • Courses depuis dernier traçage: ${selected.competitionsSinceLastTrace || 0
-      }
-    • Calcul détaillé:
-      - % base (coureurs): ${selected.count
-      }/${totalCompetitors} = ${basePercentage.toFixed(2)}%
-      - Poids occurrences: 1 / ((${selected.occurrences || 0} + 1) × ${ALGO_WEIGHT_KNOBS.OCCURRENCE_DIVIDER
-      }) = ${occurrenceWeight.toFixed(3)}
-      - Poids courses: max(${ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_MIN
-      }, ${selected.competitionsSinceLastTrace || 0})^${ALGO_WEIGHT_KNOBS.COMPETITIONS_SINCE_LAST_TRACE_POWER
-      } = ${competitionsWeight.toFixed(3)}
-      - % final: ${basePercentage.toFixed(2)}% × ${occurrenceWeight.toFixed(
-        3
-      )} × ${competitionsWeight.toFixed(3)} = ${selected.percentage?.toFixed(
-        3
-      )}%`;
-  };
-
-  // Afficher les infos de la compétition
   console.log(`
-Résultats pour la compétition:
-- Code: ${results.competitionCode}
-- Date: ${results.date || "Non spécifiée"}
-- Lieu: ${results.location || "Non spécifié"}
-- Discipline: ${results.discipline || "Non spécifiée"}
-- Comité organisateur: ${results.manche1[0].committee}
+═══ Compétition ${results.competitionCode} ═══
+  Date : ${results.date || "Non spécifiée"}   Lieu : ${results.location || "Non spécifié"}   Discipline : ${results.discipline || "Non spécifiée"}
+  Comité organisateur : ${home}`);
 
-Comités sélectionnés:
-- Manche 1: ${results.manche1[0].committee} (comité organisateur)
-- Manche 2: ${results.manche2.find((c) => c.isPicked)?.committee
-    }${formatMancheDetails(results.manche2, 2)}
-- Manche 3: ${results.manche3[0].committee} (comité organisateur)
-- Manche 4: ${results.manche4.find((c) => c.isPicked)?.committee
-    }${formatMancheDetails(results.manche4, 4)}
-`);
-  console.table(formatResultsForDisplay(results));
+  const e = results.effectifs;
+  if (e) {
+    console.log(`
+─── Effectifs pris en compte ───
+${effectifLine("Inscrits sur la page", `${e.totalPage}${e.sansComite ? ` (dont ${e.sansComite} sans comité)` : ""}`)}
+${effectifLine(`Organisateur ${e.organisateur.committee}`, `${e.organisateur.count} coureurs → trace M1 et M3 d'office, hors tirage`)}
+${effectifLine("Comités exclus du tirage", listCounts(e.exclus))}
+${effectifLine("Coureurs retenus", String(e.retenus))}
+${effectifLine("+ comités ajoutés (constants.ts)", listCounts(e.artificiels))}
+${effectifLine("= Base de calcul des %", String(e.base))}`);
+  }
+
+  const drawReason = (row: DrawRow | undefined, rows: DrawRow[]) =>
+    !row
+      ? "Aucun comité disponible"
+      : row.status === "manuel"
+        ? "Choix manuel"
+        : `Tirage au sort · ${pct(row.chance)} % de chances (n°${row.rank} sur ${
+            rows.filter((r) => r.status !== "exclu").length
+          })`;
+
+  console.log("\n─── Récapitulatif ───");
+  console.table([
+    { Manche: "M1", Traceur: home, Pourquoi: "Comité organisateur (d'office)" },
+    { Manche: "M2", Traceur: picked2?.committee ?? "–", Pourquoi: drawReason(picked2, rows2) },
+    { Manche: "M3", Traceur: home, Pourquoi: "Comité organisateur (d'office)" },
+    { Manche: "M4", Traceur: picked4?.committee ?? "–", Pourquoi: drawReason(picked4, rows4) },
+  ]);
+
+  console.log(`
+Comment lire les tableaux :
+  Poids    = Part % × (× traçages) × (× attente)
+  × traçages : baisse quand le comité a déjà tracé cette saison (le plus bas = le plus de traçages)
+  × attente  : monte avec le nombre de courses écoulées depuis son dernier traçage
+  Chance % = poids du comité ÷ somme des poids de la manche`);
+
+  console.log("\n─── Manche 2 : tirage au sort ───");
+  console.table(drawRowsForTable(rows2, "exclu"));
+  console.log(explainPick(rows2, "M2"));
+
+  console.log("\n─── Manche 4 : tirage au sort ───");
+  if (excluded4) {
+    console.log(`  ${excluded4.committee} est exclu de cette manche (déjà désigné en manche 2).`);
+  }
+  console.table(drawRowsForTable(rows4, "exclu (déjà tiré en M2)"));
+  console.log(explainPick(rows4, "M4") + "\n");
 };
 
 export const selectCommittees = async (
@@ -202,17 +254,21 @@ export const selectCommittees = async (
 
   const metadata = { discipline, date, location };
 
-  const committeesData = (await page.evaluate(() => {
+  const allCommitteeCells = (await page.evaluate(() => {
     // Colonne 8 = CS (comité) dans les lignes du tbody
     // Structure: delete(1), code(2), nom(3), prénom(4), sexe(5), année(6), club(7), CS(8)
     const rows = document.querySelectorAll("table tbody tr[data-code_coureur]");
-    return Array.from(rows)
-      .map((row) => {
-        const cells = row.querySelectorAll("td");
-        return cells[7]?.textContent?.trim() || "";
-      })
-      .filter((code) => code !== "");
-  })) as CommitteeCode[];
+    return Array.from(rows).map((row) => {
+      const cells = row.querySelectorAll("td");
+      return cells[7]?.textContent?.trim() || "";
+    });
+  })) as string[];
+
+  // Inscrits sans code comité : ignorés pour le tirage mais comptés pour l'affichage
+  const sansComite = allCommitteeCells.filter((code) => code === "").length;
+  const committeesData = allCommitteeCells.filter(
+    (code) => code !== ""
+  ) as CommitteeCode[];
 
   const committeeCounts = countCompetitorsByCommittee(committeesData);
 
@@ -222,6 +278,39 @@ export const selectCommittees = async (
       ([committee]) => !FILTERED_OUT_COMMITTEES.includes(committee as CommitteeCode)
     )
   ) as Record<CommitteeCode, number>;
+
+  // Détail des effectifs, pour expliquer la base de calcul à l'affichage
+  const exclus: Partial<Record<string, number>> = {};
+  Object.entries(committeeCounts).forEach(([committee, count]) => {
+    if (FILTERED_OUT_COMMITTEES.includes(committee as CommitteeCode)) {
+      exclus[committee] = count;
+    }
+  });
+  const retenus = Object.entries(filteredCommitteeCounts)
+    .filter(([committee]) => committee !== comiteCode)
+    .reduce((sum, [, count]) => sum + count, 0);
+  const artificiels: Partial<Record<string, number>> = Object.fromEntries(
+    Object.entries(EXTRA_COMMITTEES_COUNT).filter(
+      ([committee]) => committee !== comiteCode
+    )
+  );
+  const effectifs = {
+    organisateur: {
+      committee: comiteCode,
+      count: committeeCounts[comiteCode] || 0,
+    },
+    totalPage: allCommitteeCells.length,
+    sansComite,
+    exclus,
+    retenus,
+    artificiels,
+    base:
+      retenus +
+      Object.values(artificiels).reduce<number>(
+        (sum, count) => sum + (count || 0),
+        0
+      ),
+  };
 
   // Ajout des comités artificiels
   Object.entries(EXTRA_COMMITTEES_COUNT).forEach(([committee, count]) => {
@@ -245,5 +334,6 @@ export const selectCommittees = async (
     ...results,
     ...metadata,
     competitionCode,
+    effectifs,
   };
 };
