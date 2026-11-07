@@ -160,18 +160,23 @@ export const selectCommittees = async (
   competitionCode: string
 ) => {
   const pageInfo = await page.evaluate(() => {
-    const texts = (selector: string) =>
-      Array.from(document.querySelectorAll(selector)).map((el) =>
-        (el.textContent || "").replace(/\s+/g, " ").trim()
-      );
+    // Pas de fonction nommée ici : ce code est exécuté dans le navigateur, et tsx
+    // y ajouterait un appel __name() qui n'y existe pas.
     // Le titre ("Compétition n° ... du jj/mm/aaaa ... (...-SL)") était dans un h2,
     // il est dans un h3 sur le nouveau site : on cherche celui qui contient la date.
-    const candidates = [...texts("h1"), ...texts("h2"), ...texts("h3")];
+    const candidates = Array.from(document.querySelectorAll("h1, h2, h3")).map(
+      (el) => (el.textContent || "").replace(/\s+/g, " ").trim()
+    );
     const titre =
       candidates.find((t) => /du\s+\d{2}\/\d{2}\/\d{4}/.test(t)) ||
       candidates[0] ||
       "";
-    return { titre, sousTitre: texts("h4")[0] || "" };
+    const sousTitre = (
+      document.querySelector("h4")?.textContent || ""
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    return { titre, sousTitre };
   });
 
   const titre = pageInfo.titre;
