@@ -58,6 +58,37 @@ export async function accessTheCompetitionPage(
     await page.waitForSelector("#num_evenement", { visible: true });
     await page.type("#num_evenement", competitionCode, { delay: 100 });
 
+    // Le formulaire filtre par défaut sur la période en cours : on élargit la plage de dates
+    // (3 ans en arrière, 1 an en avant) pour retrouver aussi les compétitions passées.
+    const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
+    const now = new Date();
+    const debut = toIsoDate(
+      new Date(now.getFullYear() - 3, now.getMonth(), now.getDate())
+    );
+    const fin = toIsoDate(
+      new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
+    );
+    await page.$eval(
+      "#debut",
+      (el, value) => {
+        const input = el as HTMLInputElement;
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+      debut
+    );
+    await page.$eval(
+      "#fin",
+      (el, value) => {
+        const input = el as HTMLInputElement;
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+      fin
+    );
+
     // click the search button dans #form_competition et attendre la navigation
     await Promise.all([
       page.waitForNavigation({ waitUntil: "networkidle0" }),
