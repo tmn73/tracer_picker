@@ -23,6 +23,7 @@ export const updateManche = async (results: CommitteeResults) => {
   });
 
   const updatedResults: CommitteeResults = {
+    ...results,
     manche1:
       mancheToChange === "manche1"
         ? [

@@ -186,10 +186,12 @@ export const generateCommitteeResults = (
   };
 };
 
-export const performRandomDraw = (
-  results: CommitteeResults,
+export const performRandomDraw = <
+  T extends Pick<CommitteeResults, "manche1" | "manche2" | "manche3" | "manche4">
+>(
+  results: T,
   history: SelectionHistory
-): CommitteeResults => {
+): T => {
   const pickFromWeightedList = (
     choices: CommitteeEntry[],
     excludeCommittee?: CommitteeCode
@@ -204,16 +206,50 @@ export const performRandomDraw = (
       0
     );
 
+    // Aucun poids exploitable (ex: seul comité restant exclu, poids tous à 0) :
+    // on retombe sur un tirage uniforme parmi les comités non exclus,
+    // puis parmi tous si nécessaire.
+    if (!(totalPercentage > 0)) {
+      let pool = weightedChoices
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => c.committee !== excludeCommittee);
+      if (pool.length === 0) {
+        pool = weightedChoices.map((c, i) => ({ c, i }));
+      }
+      if (pool.length === 0) {
+        return { selectedIndex: -1, weightedChoices };
+      }
+      const selectedIndex = pool[Math.floor(Math.random() * pool.length)].i;
+      const share = 100 / pool.length;
+      return {
+        selectedIndex,
+        weightedChoices: weightedChoices.map((c) => ({
+          ...c,
+          percentage: pool.some((p) => p.c === c) ? share : 0,
+        })),
+      };
+    }
+
     const normalizedChoices = weightedChoices.map((choice) => ({
       ...choice,
       percentage: (choice.percentage / totalPercentage) * 100,
     }));
 
     let random = Math.random() * 100;
-    const selectedIndex = normalizedChoices.findIndex(({ percentage }) => {
+    let selectedIndex = normalizedChoices.findIndex(({ percentage }) => {
       random -= percentage;
       return random < 0;
     });
+
+    // Garde-fou contre les erreurs d'arrondi flottant : dernier choix à poids > 0
+    if (selectedIndex === -1) {
+      for (let i = normalizedChoices.length - 1; i >= 0; i--) {
+        if (normalizedChoices[i].percentage > 0) {
+          selectedIndex = i;
+          break;
+        }
+      }
+    }
 
     return { selectedIndex, weightedChoices: normalizedChoices };
   };
@@ -221,7 +257,7 @@ export const performRandomDraw = (
   // Tire d'abord pour la manche 2
   const { selectedIndex: manche2Index, weightedChoices: manche2Weighted } =
     pickFromWeightedList(results.manche2);
-  const manche2Committee = results.manche2[manche2Index].committee;
+  const manche2Committee = results.manche2[manche2Index]?.committee;
 
   // Tire pour la manche 4 en excluant le comité de la manche 2
   const { selectedIndex: manche4Index, weightedChoices: manche4Weighted } =

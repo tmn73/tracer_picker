@@ -101,9 +101,18 @@ async function main() {
     let isResultOk = false;
 
     while (!isResultOk) {
-      isResultOk = (await confirm({
+      const answer = await confirm({
         message: `Proposition validé ?`,
-      })) as boolean;
+      });
+
+      if (isCancel(answer)) {
+        cancel("Opération annulée.");
+        outro("Martin Construction vous remercie pour votre confiance.");
+        await browser.close();
+        process.exit(0);
+      }
+
+      isResultOk = answer;
 
       if (isResultOk) {
         // Create sanitized key
@@ -115,14 +124,22 @@ async function main() {
 
         // Load existing history
         let history: ResultsHistory = {};
-        try {
-          const existingHistory = fs.readFileSync(
-            "./results/results_history.json",
-            "utf-8"
-          );
-          history = JSON.parse(existingHistory);
-        } catch (error) {
-          // File doesn't exist or is invalid, start with empty history
+        const historyPath = "./results/results_history.json";
+        if (fs.existsSync(historyPath)) {
+          const existingHistory = fs.readFileSync(historyPath, "utf-8");
+          // Fichier vide : on repart d'un historique vide
+          if (existingHistory.trim() !== "") {
+            try {
+              history = JSON.parse(existingHistory);
+            } catch (error) {
+              // Ne jamais écraser un historique illisible : on le met de côté et on s'arrête
+              const backupPath = `${historyPath}.corrupted-${Date.now()}`;
+              fs.copyFileSync(historyPath, backupPath);
+              throw new Error(
+                `Historique illisible (JSON invalide). Copie sauvegardée dans ${backupPath}, aucune écriture effectuée.`
+              );
+            }
+          }
         }
 
         // Add new results
@@ -157,12 +174,6 @@ async function main() {
         finalResults = updatedResults;
         // displayResults(finalResults);
       }
-    }
-
-    if (isCancel(isResultOk)) {
-      cancel("Opération annulée.");
-      outro("Martin Construction vous remercie pour votre confiance.");
-      process.exit(0);
     }
 
     const html = generateHtml(finalResults, {
