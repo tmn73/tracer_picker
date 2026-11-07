@@ -35,7 +35,15 @@ describe("generateHtml", () => {
     const page = html();
     expect(page.match(/class="home-card"/g)!.length).toBe(2);
     expect(page.match(/class="rank-item picked"/g)!.length).toBe(2);
-    expect(page.match(/Pourquoi /g)!.length).toBe(2);
+    expect(page.match(/<p class="why">/g)!.length).toBe(2);
+  });
+
+  test("l'explication répond à « pourquoi des % si on tire au sort » avec l'image des billets", () => {
+    const page = html();
+    expect(page).toContain("Pourquoi des pourcentages si c'est un tirage au sort ?");
+    expect(page).toContain("loterie avec des billets");
+    expect(page).toContain("Pourquoi ne pas simplement prendre celui qui a le plus de billets ?");
+    expect(page).toContain("Ici, en manche 2 :"); // exemple tiré du tirage
   });
 
   test("manche 4 : le comité de la manche 2 est signalé comme exclu", () => {

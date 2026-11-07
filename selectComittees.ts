@@ -229,11 +229,13 @@ ${effectifLine("= Base de calcul des %", String(e.base))}`);
   ]));
 
   console.log(`
-Comment lire les tableaux :
-  Poids    = Part % × (× traçages) × (× attente)
-  × traçages : baisse quand le comité a déjà tracé cette saison (le plus bas = le plus de traçages)
+Comment lire les tableaux (le tirage est une loterie avec des billets) :
+  Chance %  = part de billets du comité dans le sac. Le hasard désigne le gagnant :
+              le favori n'est jamais sûr de sortir.
+  Poids     = nombre de billets = Part % × (× traçages) × (× attente)
+  × traçages : baisse quand le comité a déjà beaucoup tracé cette saison
   × attente  : monte avec le nombre de courses écoulées depuis son dernier traçage
-  Chance % = poids du comité ÷ somme des poids de la manche`);
+  Pourquoi pas le plus haut ? Il serait toujours en tête : le tirage garde le résultat équitable.`);
 
   console.log("\n─── Manche 2 : tirage au sort ───");
   console.log(formatTable(drawRowsForTable(rows2, "exclu")));

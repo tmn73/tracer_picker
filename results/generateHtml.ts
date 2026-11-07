@@ -198,7 +198,7 @@ export const generateHtml = (
         <div class="manche-column">
           <h2>Manche ${i + 1}</h2>
           <details class="ranking-box" open>
-            <summary>Classement · chance de sortir au tirage</summary>
+            <summary>Classement · part de billets (chance de sortir)</summary>
             <ul class="ranking">${items}
             </ul>
           </details>
@@ -222,6 +222,19 @@ export const generateHtml = (
         list(e.exclus)
       )}), plus des comités ajoutés : ${esc(list(e.artificiels))}. Total : ${e.base}.</p>`
     : "";
+
+  // Exemple concret tiré de ce tirage (manche 2)
+  const example = (() => {
+    const rows = drawn[1];
+    const picked = rows && pickedOf(rows);
+    const top = rows?.find((r) => r.status !== "exclu");
+    if (!rows || !picked || !top || picked.status !== "tire") return "";
+    const text =
+      picked.committee === top.committee
+        ? `<strong>Ici, en manche 2 :</strong> ${esc(top.committee)} avait le plus de billets (${pct(top.chance)}) et c'est lui qui est sorti.`
+        : `<strong>Ici, en manche 2 :</strong> ${esc(top.committee)} avait le plus de billets (${pct(top.chance)}), mais le hasard a désigné ${esc(picked.committee)} (${pct(picked.chance)}). C'est normal : avec un tirage, le favori n'est jamais sûr de sortir.`;
+    return `<p class="howto-example">${text}</p>`;
+  })();
 
   const location = [competitionMetadata.station, competitionMetadata.location]
     .filter(Boolean)
@@ -259,10 +272,24 @@ export const generateHtml = (
   </div>
 
   <details class="howto">
-    <summary>Comment ça marche ?</summary>
-    <p>Manches 1 et 3 : le comité organisateur trace d'office. Manches 2 et 4 : tirage au sort entre les autres comités.</p>
-    <p>Le pourcentage est la <strong>chance de sortir</strong> au tirage. Il dépend du nombre de coureurs du comité, de ses traçages passés (moins il a tracé, plus il pèse) et du temps écoulé depuis son dernier traçage. Un comité à faible pourcentage peut donc sortir : c'est le principe d'un tirage.</p>
-    <p>Le comité tiré en manche 2 ne peut pas l'être en manche 4.</p>
+    <summary>Pourquoi des pourcentages si c'est un tirage au sort ?</summary>
+    <p class="howto-lead"><strong>C'est une loterie avec des billets.</strong> Chaque comité reçoit des billets dans un sac, puis on en tire un au hasard. Le pourcentage est la <strong>part de billets</strong> du comité : plus il en a, plus il a de chances de sortir, mais rien n'est joué d'avance.</p>
+    ${example}
+    <h3>Pourquoi les comités n'ont pas tous le même nombre de billets ?</h3>
+    <ul>
+      <li><strong>Plus de coureurs</strong> : plus de billets.</li>
+      <li><strong>Moins il a déjà tracé cette saison</strong> : plus de billets.</li>
+      <li><strong>Plus il attend depuis son dernier traçage</strong> : plus de billets.</li>
+    </ul>
+    <p>Le but : sur une saison, chaque comité trace à peu près à son tour, sans que personne ne choisisse à la main.</p>
+    <h3>Pourquoi ne pas simplement prendre celui qui a le plus de billets ?</h3>
+    <p>Ce seraient toujours les mêmes en tête, et le résultat serait prévisible et discutable. Avec un tirage, chacun a sa chance et personne ne peut dire que c'est arrangé.</p>
+    <h3>Les règles</h3>
+    <ul>
+      <li>Manches 1 et 3 : le comité organisateur trace d'office, sans tirage.</li>
+      <li>Manches 2 et 4 : tirage au sort entre les autres comités.</li>
+      <li>Le comité tiré en manche 2 ne peut pas l'être en manche 4.</li>
+    </ul>
     ${effectifs}
   </details>
 
