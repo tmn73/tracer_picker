@@ -8,7 +8,7 @@ export const accessTheSite = async (page: Page) => {
   const s = spinner();
   try {
     s.start("Accès au site des inscriptions");
-    await page.goto("https://inscription.ffs.fr/v2/inscription_ffs/index.php");
+    await page.goto("https://inscription.ffs.fr/public/index.php?page=login");
     s.stop("Accès au site des inscriptions ✅");
   } catch (error) {
     s.stop("Erreur lors de l'accès au site ❌", 1);
