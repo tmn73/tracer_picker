@@ -9,6 +9,10 @@ import { computeOccurrenceWeight } from "./algoSelection";
 import { EXTRA_COMMITTEES_COUNT, ALGO_WEIGHT_KNOBS, FILTERED_OUT_COMMITTEES } from "./constants";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+// __dirname n'existe pas en ESM sous Node (Bun le fournit) : on le recalcule
+const PROJECT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export const countCompetitorsByCommittee = (committees: CommitteeCode[]) => {
   return committees.reduce((acc, committee) => {
@@ -205,7 +209,7 @@ export const selectCommittees = async (
   });
 
   const historyFileContent = fs.readFileSync(
-    path.join(__dirname, "results", "results_history.json"),
+    path.join(PROJECT_DIR, "results", "results_history.json"),
     "utf8"
   );
   const historyData = historyFileContent.trim() ? JSON.parse(historyFileContent) : [];
