@@ -160,9 +160,18 @@ export const selectCommittees = async (
   competitionCode: string
 ) => {
   const pageInfo = await page.evaluate(() => {
-    const allH2 = Array.from(document.querySelectorAll("h2")).map(el => el.textContent?.trim());
-    const allH4 = Array.from(document.querySelectorAll("h4")).map(el => el.textContent?.trim());
-    return { titre: allH2[0] || "", sousTitre: allH4[0] || "" };
+    const texts = (selector: string) =>
+      Array.from(document.querySelectorAll(selector)).map((el) =>
+        (el.textContent || "").replace(/\s+/g, " ").trim()
+      );
+    // Le titre ("Compétition n° ... du jj/mm/aaaa ... (...-SL)") était dans un h2,
+    // il est dans un h3 sur le nouveau site : on cherche celui qui contient la date.
+    const candidates = [...texts("h1"), ...texts("h2"), ...texts("h3")];
+    const titre =
+      candidates.find((t) => /du\s+\d{2}\/\d{2}\/\d{4}/.test(t)) ||
+      candidates[0] ||
+      "";
+    return { titre, sousTitre: texts("h4")[0] || "" };
   });
 
   const titre = pageInfo.titre;
@@ -172,8 +181,15 @@ export const selectCommittees = async (
   const dateMatch = titre.match(/du\s+(\d{2}\/\d{2}\/\d{4})/);
   const date = dateMatch ? dateMatch[1] : "";
 
-  // Extraire la discipline: "(-SL)" -> "SL"
-  const disciplineMatch = titre.match(/\(-?([A-Z]+)\)/);
+  // La date sert à trier l'historique : sans elle on s'arrête plutôt que de le fausser
+  if (!date) {
+    throw new Error(
+      `Impossible de lire la date de la compétition dans le titre : « ${titre} »`
+    );
+  }
+
+  // Extraire la discipline : "(-SL)" ou "(CHAMROUSSE S-SL)" -> "SL"
+  const disciplineMatch = titre.match(/-\s*([A-Z]+)\s*\)/);
   const discipline = disciplineMatch ? disciplineMatch[1] : "";
 
   // Le lieu est dans le h4
